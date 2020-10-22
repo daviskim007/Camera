@@ -4,6 +4,7 @@ import android.Manifest
 import android.app.Activity
 import android.content.ContentValues
 import android.content.Intent
+import android.content.Intent.ACTION_PICK
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.net.Uri
@@ -30,6 +31,7 @@ class MainActivity : AppCompatActivity() {
     private val FLAG_PERM_STORAGE = 99
 
     private val FLAG_REQ_CAMERA = 101
+    private val FLAG_REQ_GALLERY = 102
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -41,6 +43,14 @@ class MainActivity : AppCompatActivity() {
             } else  {
                 ActivityCompat.requestPermissions(this, CAMERA_PERMISSION, FLAG_PERM_CAMERA )
             }
+
+        buttonGallery.setOnClickListener {
+            if(isPermitted(STORAGE_PERMISSION)) {
+                openGallery()
+            } else  {
+                ActivityCompat.requestPermissions(this, STORAGE_PERMISSION, FLAG_PERM_STORAGE)
+            }
+        }
         }
     }
 
@@ -57,6 +67,12 @@ class MainActivity : AppCompatActivity() {
     fun openCamera()    {
         val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
         startActivityForResult(intent, FLAG_REQ_CAMERA )
+    }
+
+    fun openGallery()   {
+        val intent = Intent(Intent.ACTION_PICK)
+        intent.type = MediaStore.Images.Media.CONTENT_TYPE
+        startActivityForResult(intent, FLAG_REQ_GALLERY)
     }
 
     fun saveImageFile(filename:String, mimeType:String, bitmap: Bitmap) : Uri? {
@@ -103,9 +119,12 @@ class MainActivity : AppCompatActivity() {
                         val uri = saveImageFile(filename,"image/jpg", bitmap)
                         imagePreview.setImageURI(uri)
                     }
-
-
                 }
+                FLAG_REQ_GALLERY -> {
+                    val uri = data?.data
+                    imagePreview.setImageURI(uri)
+                }
+
             }
         }
     }
