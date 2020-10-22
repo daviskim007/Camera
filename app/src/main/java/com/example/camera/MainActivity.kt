@@ -23,38 +23,37 @@ import java.text.SimpleDateFormat
 
 class MainActivity : AppCompatActivity() {
 
-    private val CAMERA_PERMISSION = arrayOf(Manifest.permission.CAMERA)
-    private val STORAGE_PERMISSION = arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE
+    val CAMERA_PERMISSION = arrayOf(Manifest.permission.CAMERA)
+    val STORAGE_PERMISSION = arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE
         , Manifest.permission.WRITE_EXTERNAL_STORAGE)
 
-    private val FLAG_PERM_CAMERA = 98
-    private val FLAG_PERM_STORAGE = 99
+    val FLAG_PERM_CAMERA = 98
+    val FLAG_PERM_STORAGE = 99
 
-    private val FLAG_REQ_CAMERA = 101
-    private val FLAG_REQ_GALLERY = 102
+    val FLAG_REQ_CAMERA = 101
+    val FLAG_REQ_GALLERY = 102
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        buttonCamera.setOnClickListener {
-            if(isPermitted(CAMERA_PERMISSION))   {
-                openCamera()
-            } else  {
-                ActivityCompat.requestPermissions(this, CAMERA_PERMISSION, FLAG_PERM_CAMERA )
+        if(isPermitted(STORAGE_PERMISSION)){
+            buttonCamera.setOnClickListener {
+                if (isPermitted(CAMERA_PERMISSION)) {
+                    openCamera()
+                } else {
+                    ActivityCompat.requestPermissions(this, CAMERA_PERMISSION, FLAG_PERM_CAMERA)
+                }
             }
-
-        buttonGallery.setOnClickListener {
-            if(isPermitted(STORAGE_PERMISSION)) {
+            buttonGallery.setOnClickListener {
                 openGallery()
-            } else  {
-                ActivityCompat.requestPermissions(this, STORAGE_PERMISSION, FLAG_PERM_STORAGE)
             }
-        }
+        } else  {
+            ActivityCompat.requestPermissions(this, STORAGE_PERMISSION, FLAG_PERM_STORAGE)
         }
     }
 
-    fun isPermitted(permissions:Array<String>) : Boolean {
+    private fun isPermitted(permissions:Array<String>) : Boolean {
         for (permission in permissions) {
             val result = ContextCompat.checkSelfPermission(this, permission)
             if (result != PackageManager.PERMISSION_GRANTED) {
@@ -111,7 +110,7 @@ class MainActivity : AppCompatActivity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (resultCode == Activity.RESULT_OK){
-            when(resultCode)   {
+            when(requestCode)   {
                 FLAG_REQ_CAMERA -> {
                     if (data?.extras?.get("data") != null)  {
                         val bitmap = data?.extras?.get("data") as Bitmap
