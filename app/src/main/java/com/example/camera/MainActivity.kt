@@ -59,14 +59,51 @@ class MainActivity : AppCompatActivity() {
         startActivityForResult(intent, FLAG_REQ_CAMERA )
     }
 
+    fun saveImageFile(filename:String, mimeType:String, bitmap: Bitmap) : Uri? {
+        var values = ContentValues()
+        values.put(MediaStore.Images.Media.DISPLAY_NAME, filename)
+        values.put(MediaStore.Images.Media.MIME_TYPE, mimeType)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            values.put(MediaStore.Images.Media.IS_PENDING, 1)
+        }
+
+        val uri = contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+
+        try {
+            if (uri != null) {
+                var descriptor = contentResolver.openFileDescriptor(uri, "w")
+                if (descriptor != null) {
+                    val fos = FileOutputStream(descriptor.fileDescriptor)
+                    bitmap.compress(Bitmap.CompressFormat.JPEG, 100, fos)
+                    fos.close()
+                    return uri
+                }
+            }
+        } catch (e:Exception){
+            Log.e("Camera","${e.localizedMessage}")
+        }
+        return null
+    }
+
+    fun newFileName() : String {
+        val sdf = SimpleDateFormat("yyyyMMdd_HHmmss")
+        val filename = sdf.format(System.currentTimeMillis())
+        return filename
+    }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (resultCode == Activity.RESULT_OK){
             when(resultCode)   {
                 FLAG_REQ_CAMERA -> {
-                    val bitmap = data?.extras?.get("data") as Bitmap
-                    imagePreview.setImageBitmap(bitmap)
+                    if (data?.extras?.get("data") != null)  {
+                        val bitmap = data?.extras?.get("data") as Bitmap
+                        val filename = newFileName()
+                        val uri = saveImageFile(filename,"image/jpg", bitmap)
+                        imagePreview.setImageURI(uri)
+                    }
+
 
                 }
             }
