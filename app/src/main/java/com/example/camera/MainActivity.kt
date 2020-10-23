@@ -7,6 +7,7 @@ import android.content.Intent
 import android.content.Intent.ACTION_PICK
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.graphics.ImageDecoder
 import android.net.Uri
 import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
@@ -17,6 +18,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import kotlinx.android.synthetic.main.activity_main.*
 import java.io.FileOutputStream
+import java.io.IOException
 import java.lang.Exception
 import java.text.SimpleDateFormat
 
@@ -32,6 +34,8 @@ class MainActivity : AppCompatActivity() {
 
     val FLAG_REQ_CAMERA = 101
     val FLAG_REQ_GALLERY = 102
+
+    var photoURI: Uri? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -51,65 +55,39 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun isPermitted(permissions:Array<String>, flag:Int) : Boolean {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            for (permission in permissions) {
-            val result = ContextCompat.checkSelfPermission(this, permission)
-            if (result != PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(this, permissions, flag)
-                return false
-                }
-            }
-        }
-        return true
-    }
 
-    fun openCamera()    {
+
+    private fun openCamera()    {
         if(isPermitted(CAMERA_PERMISSION,FLAG_PERM_CAMERA)){
-            val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
-            startActivityForResult(intent, FLAG_REQ_CAMERA )
+            dispatchTakePictureIntent()
         }
     }
 
-    fun openGallery()   {
+    private fun openGallery()   {
         val intent = Intent(Intent.ACTION_PICK)
         intent.type = MediaStore.Images.Media.CONTENT_TYPE
         startActivityForResult(intent, FLAG_REQ_GALLERY)
     }
 
-    fun saveImageFile(filename:String, mimeType:String, bitmap: Bitmap) : Uri? {
+    private fun createImageUri(filename:String, mimeType:String) : Uri? {
         var values = ContentValues()
         values.put(MediaStore.Images.Media.DISPLAY_NAME, filename)
         values.put(MediaStore.Images.Media.MIME_TYPE, mimeType)
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            values.put(MediaStore.Images.Media.IS_PENDING, 1)
-        }
-
-        val uri = contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
-
-        try {
-            if (uri != null) {
-                var descriptor = contentResolver.openFileDescriptor(uri, "w")
-                if (descriptor != null) {
-                    val fos = FileOutputStream(descriptor.fileDescriptor)
-                    bitmap.compress(Bitmap.CompressFormat.JPEG, 100, fos)
-                    fos.close()
-                    // P. 이 코드가 없으면 바로 저장이 안되고 시간이 지나야 갤러리에 저장이 된다.
-                    if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                        values.clear()
-                        values.put(MediaStore.Images.Media.IS_PENDING,0)
-                        contentResolver.update(uri, values, null, null)
-                    }
-                }
-            }
-        } catch (e:Exception){
-            Log.e("Camera","${e.localizedMessage}")
-        }
-        return uri
+        return contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
     }
 
-    fun newFileName() : String {
+    private fun dispatchTakePictureIntent() {
+        // 카메라 인텐트 생성
+        val takePictureIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
+        createImageUri(newFileName(), "image/jpeg")?.let { uri ->
+            photoURI = uri
+            takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI)
+            startActivityForResult(takePictureIntent, FLAG_REQ_CAMERA)
+        }
+    }
+
+    private fun newFileName() : String {
         val sdf = SimpleDateFormat("yyyyMMdd_HHmmss")
         val filename = sdf.format(System.currentTimeMillis())
         return filename
@@ -117,22 +95,51 @@ class MainActivity : AppCompatActivity() {
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (resultCode == Activity.RESULT_OK){
-            when(requestCode)   {
+        if(resultCode == Activity.RESULT_OK) {
+            when(requestCode){
                 FLAG_REQ_CAMERA -> {
-                    if (data?.extras?.get("data") != null)  {
-                        val bitmap = data?.extras?.get("data") as Bitmap
-                        val filename = newFileName()
-                        val uri = saveImageFile(filename,"image/jpeg", bitmap)
-                        imagePreview.setImageURI(uri)
+                    if (photoURI != null) {
+                        val bitmap = loadBitmapFromMediaStoreBy(photoURI!!)
+                        imagePreview.setImageBitmap(bitmap)
+                        photoURI = null // 사용 후 null 처리
                     }
-                }
-                FLAG_REQ_GALLERY -> {
-                    val uri = data?.data
-                    imagePreview.setImageURI(uri)
                 }
             }
         }
+    }
+
+// Uri 로 미디어 스토어의 이미지를 불러오는 함수를 작성
+fun loadBitmapFromMediaStoreBy(photoUri: Uri): Bitmap? {
+    var image: Bitmap? = null
+    try {
+        image = if (Build.VERSION.SDK_INT > 27) { // Api 버전별 이미지 처리
+            val source: ImageDecoder.Source =
+                ImageDecoder.createSource(this.contentResolver, photoUri)
+            ImageDecoder.decodeBitmap(source)
+        } else {
+            MediaStore.Images.Media.getBitmap(this.contentResolver, photoUri)
+        }
+    } catch (e: IOException) {
+        e.printStackTrace()
+    }
+    return image
+}
+
+    /**
+     * 권한처리
+     */
+
+    private fun isPermitted(permissions:Array<String>, flag:Int) : Boolean {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            for (permission in permissions) {
+                val result = ContextCompat.checkSelfPermission(this, permission)
+                if (result != PackageManager.PERMISSION_GRANTED) {
+                    ActivityCompat.requestPermissions(this, permissions, flag)
+                    return false
+                }
+            }
+        }
+        return true
     }
 
     override fun onRequestPermissionsResult(
