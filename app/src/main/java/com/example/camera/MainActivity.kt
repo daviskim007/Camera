@@ -37,36 +37,38 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        if(isPermitted(STORAGE_PERMISSION)){
-            buttonCamera.setOnClickListener {
-                if (isPermitted(CAMERA_PERMISSION)) {
-                    openCamera()
-                } else {
-                    ActivityCompat.requestPermissions(this, CAMERA_PERMISSION, FLAG_PERM_CAMERA)
-                }
-            }
-            buttonGallery.setOnClickListener {
-                openGallery()
-            }
-        } else  {
-            ActivityCompat.requestPermissions(this, STORAGE_PERMISSION, FLAG_PERM_STORAGE)
+        if(isPermitted(STORAGE_PERMISSION, FLAG_PERM_STORAGE)){
+            setViews()
         }
     }
 
+    private fun setViews()  {
+        buttonCamera.setOnClickListener {
+            openCamera()
+        }
+        buttonGallery.setOnClickListener {
+            openGallery()
+        }
+    }
 
-    private fun isPermitted(permissions:Array<String>) : Boolean {
-        for (permission in permissions) {
+    private fun isPermitted(permissions:Array<String>, flag:Int) : Boolean {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            for (permission in permissions) {
             val result = ContextCompat.checkSelfPermission(this, permission)
             if (result != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this, permissions, flag)
                 return false
+                }
             }
         }
         return true
     }
 
     fun openCamera()    {
-        val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
-        startActivityForResult(intent, FLAG_REQ_CAMERA )
+        if(isPermitted(CAMERA_PERMISSION,FLAG_PERM_CAMERA)){
+            val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
+            startActivityForResult(intent, FLAG_REQ_CAMERA )
+        }
     }
 
     fun openGallery()   {
@@ -93,13 +95,18 @@ class MainActivity : AppCompatActivity() {
                     val fos = FileOutputStream(descriptor.fileDescriptor)
                     bitmap.compress(Bitmap.CompressFormat.JPEG, 100, fos)
                     fos.close()
-                    return uri
+                    // P. 이 코드가 없으면 바로 저장이 안되고 시간이 지나야 갤러리에 저장이 된다.
+                    if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        values.clear()
+                        values.put(MediaStore.Images.Media.IS_PENDING,0)
+                        contentResolver.update(uri, values, null, null)
+                    }
                 }
             }
         } catch (e:Exception){
             Log.e("Camera","${e.localizedMessage}")
         }
-        return null
+        return uri
     }
 
     fun newFileName() : String {
@@ -145,6 +152,16 @@ class MainActivity : AppCompatActivity() {
                 if (checked)    {
                     openCamera()
                 }
+            }
+            // P. 이 코드가 없으면 처음 파일 접근 permission 을 받고 CAMERA를 누르면 반응이 없다.
+            FLAG_PERM_STORAGE -> {
+                for (grant in grantResults) {
+                    if(grant != PackageManager.PERMISSION_GRANTED)  {
+                        finish()
+                        return
+                    }
+                }
+                setViews()
             }
         }
     }
