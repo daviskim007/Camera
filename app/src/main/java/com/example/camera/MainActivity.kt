@@ -53,6 +53,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+
     private fun isPermitted(permissions:Array<String>) : Boolean {
         for (permission in permissions) {
             val result = ContextCompat.checkSelfPermission(this, permission)
@@ -115,7 +116,7 @@ class MainActivity : AppCompatActivity() {
                     if (data?.extras?.get("data") != null)  {
                         val bitmap = data?.extras?.get("data") as Bitmap
                         val filename = newFileName()
-                        val uri = saveImageFile(filename,"image/jpg", bitmap)
+                        val uri = saveImageFile(filename,"image/jpeg", bitmap)
                         imagePreview.setImageURI(uri)
                     }
                 }
@@ -123,7 +124,6 @@ class MainActivity : AppCompatActivity() {
                     val uri = data?.data
                     imagePreview.setImageURI(uri)
                 }
-
             }
         }
     }
