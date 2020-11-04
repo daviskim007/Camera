@@ -74,14 +74,19 @@ class MainActivity : AppCompatActivity() {
         values.put(MediaStore.Images.Media.DISPLAY_NAME, filename)
         values.put(MediaStore.Images.Media.MIME_TYPE, mimeType)
 
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            values.put(MediaStore.Images.Media.IS_PENDING, 1)
+        }
+
         return contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
     }
 
     private fun dispatchTakePictureIntent() {
+
         // 카메라 인텐트 생성
         val takePictureIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
-        createImageUri(newFileName(), "image/jpeg")?.let { uri ->
-            photoURI = uri
+        createImageUri(newFileName(), "image/jpeg")?.let {
+                uri -> photoURI = uri
             takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI)
             startActivityForResult(takePictureIntent, FLAG_REQ_CAMERA)
         }
@@ -103,6 +108,10 @@ class MainActivity : AppCompatActivity() {
                         imagePreview.setImageBitmap(bitmap)
                         photoURI = null // 사용 후 null 처리
                     }
+                }
+                FLAG_REQ_GALLERY -> {
+                    val uri = data?.data
+                    imagePreview.setImageURI(uri)
                 }
             }
         }
