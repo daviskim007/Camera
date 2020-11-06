@@ -34,7 +34,6 @@ class MainActivity : AppCompatActivity() {
 
     val FLAG_REQ_CAMERA = 101
     val FLAG_REQ_GALLERY = 102
-
     var photoURI: Uri? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -54,7 +53,6 @@ class MainActivity : AppCompatActivity() {
             openGallery()
         }
     }
-
 
 
     private fun openCamera()    {
